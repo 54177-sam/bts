@@ -1,51 +1,56 @@
 import os
-from pathlib import Path
-
+from datetime import timedelta
 
 class Config:
-    """Application configuration with environment variable support."""
-    
+    """Application configuration"""
     # Security
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'siberindo-bts-gui-secure-key-2024')
-    
-    # Database
-    DATABASE_PATH = os.environ.get('DATABASE_PATH', 'siberindo_bts.db')
-    DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', '5'))
-    DB_MAX_OVERFLOW = int(os.environ.get('DB_MAX_OVERFLOW', '10'))
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'siberindo-bts-enhanced-secret-2024'
     
     # Session
-    SESSION_TIMEOUT = int(os.environ.get('SESSION_TIMEOUT', '3600'))
-    PERMANENT_SESSION_LIFETIME = SESSION_TIMEOUT
+    SESSION_TYPE = 'filesystem'
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
     
-    # Service Ports
-    BTS_PORT = int(os.environ.get('BTS_PORT', '4242'))
-    BSC_PORT = int(os.environ.get('BSC_PORT', '4241'))
-    HLR_PORT = int(os.environ.get('HLR_PORT', '4258'))
+    # Application
+    DEBUG = True
+    TESTING = False
+    
+    # BTS Configuration
+    BTS_MCC = '001'  # Mobile Country Code
+    BTS_MNC = '01'   # Mobile Network Code  
+    BTS_LAC = '1001' # Location Area Code
+    BTS_CID = '1'    # Cell ID
     
     # HackRF Configuration
-    HACKRF_SAMPLE_RATE = int(os.environ.get('HACKRF_SAMPLE_RATE', '2000000'))
-    HACKRF_GAIN = int(os.environ.get('HACKRF_GAIN', '40'))
-    HACKRF_TIMEOUT = int(os.environ.get('HACKRF_TIMEOUT', '10'))
+    HACKRF_SIMULATION_MODE = True  # Set to False for real hardware
+    HACKRF_SAMPLE_RATE = 1000000   # 1 MHz
+    HACKRF_FREQUENCY = 942000000   # 942 MHz
     
-    # SMS Configuration
-    SMS_MAX_LENGTH = int(os.environ.get('SMS_MAX_LENGTH', '160'))
-    SMS_BATCH_SIZE = int(os.environ.get('SMS_BATCH_SIZE', '100'))
+    # Services Configuration
+    SERVICES = {
+        'osmo_bts': {'port': 4238, 'enabled': True},
+        'osmo_bsc': {'port': 4240, 'enabled': True},
+        'osmo_msc': {'port': 4242, 'enabled': True},
+        'osmo_hlr': {'port': 4243, 'enabled': False},
+        'osmo_sgsn': {'port': 4244, 'enabled': False},
+        'osmo_ggsn': {'port': 4245, 'enabled': False}
+    }
     
-    # Cache Settings
-    CACHE_TYPE = os.environ.get('CACHE_TYPE', 'simple')
-    CACHE_DEFAULT_TIMEOUT = int(os.environ.get('CACHE_DEFAULT_TIMEOUT', '300'))
+    # Database
+    DATABASE_PATH = 'data/bts_database.db'
     
-    # Company Information
-    COMPANY_NAME = "SIBERINDO"
-    COMPANY_FULL_NAME = "SIBERINDO Technology"
-    VERSION = "1.0.0"
-    
-    # Admin Credentials (override with environment variables in production)
-    ADMIN_USER = os.environ.get('ADMIN_USER', 'admin')
-    ADMIN_PASS = os.environ.get('ADMIN_PASS', 'admin')
-    
-    # Application Settings
-    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    TESTING = os.environ.get('FLASK_TESTING', 'False').lower() == 'true'
-    JSON_SORT_KEYS = False
-    JSONIFY_PRETTYPRINT_REGULAR = DEBUG
+    # Logging
+    LOG_LEVEL = 'INFO'
+    LOG_FILE = 'logs/bts_system.log'
+
+class ProductionConfig(Config):
+    DEBUG = False
+    TESTING = False
+    HACKRF_SIMULATION_MODE = False
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    TESTING = True
+
+class TestingConfig(Config):
+    TESTING = True
+    HACKRF_SIMULATION_MODE = True

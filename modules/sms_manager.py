@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from modules.helpers import login_required
+from modules.database import save_sms, save_sms_batch, get_sms_history as db_get_sms_history
 import logging
 from functools import wraps
 import time
@@ -41,7 +42,6 @@ class SMSManager:
     def send_sms_batch(sms_list):
         """Send batch SMS with efficient database operations."""
         try:
-            from modules.database import save_sms_batch
             return save_sms_batch(sms_list)
         except Exception as e:
             logger.exception("Error sending SMS batch")
@@ -51,7 +51,6 @@ class SMSManager:
     def send_sms(sender, receiver, message, sms_type='STANDARD'):
         """Send single SMS."""
         try:
-            from modules.database import save_sms
             return save_sms(sender, receiver, message, sms_type, 'SENT')
         except Exception as e:
             logger.exception("Error sending SMS")
@@ -62,8 +61,7 @@ class SMSManager:
     def get_sms_history(limit=50, offset=0):
         """Get cached SMS history with pagination."""
         try:
-            from modules.database import get_sms_history
-            return get_sms_history(limit=limit, offset=offset)
+            return db_get_sms_history(limit=limit, offset=offset)
         except Exception as e:
             logger.exception("Error fetching SMS history")
             return []

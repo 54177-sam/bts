@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
 from modules.helpers import login_required
+from modules.database import get_subscribers as db_get_subscribers, get_subscribers_count as db_get_subscribers_count
 import logging
 from functools import wraps
 import time
@@ -43,8 +44,7 @@ class SubscriberManager:
     def get_subscribers(limit=100, offset=0):
         """Get subscribers with pagination and caching."""
         try:
-            from modules.database import get_subscribers
-            return get_subscribers(limit=limit, offset=offset)
+            return db_get_subscribers(limit=limit, offset=offset)
         except Exception as e:
             logger.exception("Error fetching subscribers")
             return []
@@ -54,8 +54,7 @@ class SubscriberManager:
     def get_subscribers_count():
         """Get total subscriber count with caching."""
         try:
-            from modules.database import get_subscribers_count
-            return get_subscribers_count()
+            return db_get_subscribers_count()
         except Exception as e:
             logger.exception("Error getting subscriber count")
             return 0

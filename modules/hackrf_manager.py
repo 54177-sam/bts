@@ -14,7 +14,7 @@ class HackRFManager:
         self.scan_process = None
         self.is_scanning = False
         self.scan_results = []
-        self._hackrf_available = None
+        self._hackrf_status = None
         self.last_detection = None
         self.detection_history = []
         self.scan_progress = 0
@@ -41,10 +41,10 @@ class HackRFManager:
         """Detect HackRF device with detailed information"""
         detection_time = datetime.now()
         
-        if self._hackrf_available is None:
-            self._hackrf_available = self._check_hackrf_availability()
+        if self._hackrf_status is None:
+            self._hackrf_status = self._check_hackrf_availability()
         
-        if not self._hackrf_available:
+        if not self._hackrf_status:
             self.last_detection = {
                 'timestamp': detection_time,
                 'status': 'tools_not_available',

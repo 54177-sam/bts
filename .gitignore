@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+EGG-INFO/
+
+# Virtual environments
+siberindo-venv/
+venv/
+.venv/
+env/
+
+# Flask/Python specific
+instance/
+*.sqlite3
+*.db
+.pytest_cache/
+
+# Environment variables
+.env
+.env.*
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs and coverage
+*.log
+coverage.*
+htmlcov/
+
+# PyInstaller
+*.manifest
+*.spec

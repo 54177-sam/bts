@@ -22,3 +22,6 @@ class Config:
     COMPANY_NAME = "SIBERINDO"
     COMPANY_FULL_NAME = "SIBERINDO Technology"
     VERSION = "1.0.0"
+    # Admin credentials (override with environment variables in production)
+    ADMIN_USER = os.environ.get('ADMIN_USER', 'admin')
+    ADMIN_PASS = os.environ.get('ADMIN_PASS', 'admin')

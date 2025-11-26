@@ -1,18 +1,11 @@
 from flask import Blueprint, render_template, session, jsonify, request
-from functools import wraps
+from modules.helpers import login_required
 import json
 from datetime import datetime
 
 scanner_bp = Blueprint('scanner', __name__)
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('logged_in'):
-            from flask import redirect, url_for
-            return redirect(url_for('auth.login'))
-        return f(*args, **kwargs)
-    return decorated_function
+ 
 
 @scanner_bp.route('/bts_scanner')
 @login_required

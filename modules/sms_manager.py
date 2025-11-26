@@ -1,16 +1,7 @@
 from flask import Blueprint, render_template, request, flash, session
-from functools import wraps
+from modules.helpers import login_required
 
 sms_bp = Blueprint('sms', __name__)
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('logged_in'):
-            from flask import redirect, url_for
-            return redirect(url_for('auth.login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 @sms_bp.route('/send_silent_sms', methods=['GET', 'POST'])
 @login_required

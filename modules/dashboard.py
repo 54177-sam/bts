@@ -1,19 +1,11 @@
 from flask import Blueprint, render_template, session, jsonify
-from functools import wraps
+from modules.helpers import login_required
 import psutil
 import time
 from datetime import datetime, timedelta
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('logged_in'):
-            from flask import redirect, url_for
-            return redirect(url_for('auth.login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 def get_system_stats():
     """Get comprehensive system statistics"""

@@ -1,18 +1,22 @@
 import sqlite3
 import logging
 from datetime import datetime
+import config
 
 logger = logging.getLogger(__name__)
 
 def get_db_connection():
-    return sqlite3.connect('siberindo_bts.db')
+    """Return a sqlite3 connection using the configured database path."""
+    conn = sqlite3.connect(config.Config.DATABASE_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
     """Initialize database with required tables"""
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        
+
         # Subscribers table
         c.execute('''CREATE TABLE IF NOT EXISTS subscribers
                      (id INTEGER PRIMARY KEY, 
@@ -21,7 +25,7 @@ def init_db():
                       status TEXT DEFAULT 'active',
                       last_seen TIMESTAMP,
                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-        
+
         # SMS history table
         c.execute('''CREATE TABLE IF NOT EXISTS sms_history
                      (id INTEGER PRIMARY KEY, 
@@ -31,21 +35,21 @@ def init_db():
                       type TEXT,
                       status TEXT,
                       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-        
-        # Insert sample data
+
+        # Insert sample data (use ISO formatted timestamps)
         c.execute('''INSERT OR IGNORE INTO subscribers (imsi, msisdn, status, last_seen) 
                      VALUES (?, ?, ?, ?)''',
-                ('001011234567890', '1234567890', 'active', datetime.now()))
-        
+                ('001011234567890', '1234567890', 'active', datetime.now().isoformat()))
+
         c.execute('''INSERT OR IGNORE INTO subscribers (imsi, msisdn, status, last_seen) 
                      VALUES (?, ?, ?, ?)''',
-                ('001011234567891', '1234567891', 'active', datetime.now()))
-        
+                ('001011234567891', '1234567891', 'active', datetime.now().isoformat()))
+
         conn.commit()
-        print("SIBERINDO database initialized successfully")
-        
+        logger.info("SIBERINDO database initialized successfully")
+
     except sqlite3.Error as e:
-        print(f"Database initialization error: {e}")
+        logger.exception("Database initialization error")
         raise
     finally:
         conn.close()
@@ -58,8 +62,9 @@ def get_subscribers_count():
         c.execute("SELECT COUNT(*) FROM subscribers")
         count = c.fetchone()[0]
         return count
-    except:
-        return 2  # Return 2 for sample data
+    except Exception:
+        logger.exception("Error getting subscribers count")
+        return 0
     finally:
         conn.close()
 
@@ -71,7 +76,8 @@ def get_subscribers():
         c.execute("SELECT * FROM subscribers ORDER BY last_seen DESC")
         subscribers = c.fetchall()
         return subscribers
-    except:
+    except Exception:
+        logger.exception("Error fetching subscribers")
         return []
     finally:
         conn.close()
@@ -85,7 +91,8 @@ def save_sms(sender, receiver, message, sms_type, status):
                   (sender, receiver, message, sms_type, status))
         conn.commit()
         return True
-    except:
+    except Exception:
+        logger.exception("Error saving SMS")
         return False
     finally:
         conn.close()
@@ -98,7 +105,8 @@ def get_sms_history():
         c.execute("SELECT * FROM sms_history ORDER BY timestamp DESC LIMIT 50")
         sms_list = c.fetchall()
         return sms_list
-    except:
+    except Exception:
+        logger.exception("Error fetching SMS history")
         return []
     finally:
         conn.close()

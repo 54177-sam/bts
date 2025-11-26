@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ company }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .health-score {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    .health-excellent { color: #28a745; }
+    .health-good { color: #20c997; }
+    .health-fair { color: #ffc107; }
+    .health-poor { color: #fd7e14; }
+    .health-critical { color: #dc3545; }
+    
+    .progress {
+        height: 8px;
+    }
+    
+    .stat-card {
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .service-status {
+        font-size: 0.85rem;
+    }
+    
+    .hackrf-status {
+        border-left: 4px solid;
+    }
+    .hackrf-connected { border-left-color: #28a745; }
+    .hackrf-disconnected { border-left-color: #dc3545; }
+    .hackrf-warning { border-left-color: #ffc107; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Dashboard - {{ full_company }}</h2>
+    <div>
+        <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+        <button class="btn btn-outline-info btn-sm ms-2" onclick="detectHackRF()">
+            <i class="fas fa-satellite-dish me-1"></i>Detect HackRF
+        </button>
+    </div>
+</div>
+
+<!-- System Health Score -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center">
+                        {% set health_class = 'health-excellent' if health_score >= 80 else 'health-good' if health_score >= 60 else 'health-fair' if health_score >= 40 else 'health-poor' %}
+                        <div class="health-score {{ health_class }}">{{ health_score }}</div>
+                        <div class="text-muted">System Health Score</div>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <small class="text-muted">Services</small>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-success" style="width: {{ (services_running / 6) * 100 }}%"></div>
+                                </div>
+                                <div>{{ services_running }}/6 Running</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">HackRF</small>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar {{ 'bg-success' if hackrf_status.connected else 'bg-danger' }}" style="width: {{ 100 if hackrf_status.connected else 0 }}%"></div>
+                                </div>
+                                <div>{{ hackrf_status.display_text }}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">CPU</small>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar {{ 'bg-success' if system_stats.cpu.percent < 50 else 'bg-warning' if system_stats.cpu.percent < 80 else 'bg-danger' }}" 
+                                         style="width: {{ system_stats.cpu.percent }}%"></div>
+                                </div>
+                                <div>{{ system_stats.cpu.percent }}% Used</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">Memory</small>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar {{ 'bg-success' if system_stats.memory.percent < 50 else 'bg-warning' if system_stats.memory.percent < 80 else 'bg-danger' }}" 
+                                         style="width: {{ system_stats.memory.percent }}%"></div>
+                                </div>
+                                <div>{{ system_stats.memory.percent }}% Used</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Statistics -->
+<div class="row mb-4">
+    <!-- HackRF Status -->
+    <div class="col-md-4">
+        <div class="card hackrf-status {{ 'hackrf-connected' if hackrf_status.connected else 'hackrf-disconnected' if hackrf_status.badge_type == 'danger' else 'hackrf-warning' }}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-satellite-dish me-2"></i>HackRF
+                    </h5>
+                    <span class="badge bg-{{ hackrf_status.badge_type }}">{{ hackrf_status.display_text }}</span>
+                </div>
+                <p class="text-muted small mb-2">{{ hackrf_status.description }}</p>
+                
+                {% if hackrf_status.connected and hackrf_status.device_info %}
+                <div class="mt-3">
+                    <small class="text-muted">Device Information:</small>
+                    <div class="small">
+                        <div><strong>Board ID:</strong> {{ hackrf_status.device_info.board_id }}</div>
+                        <div><strong>Firmware:</strong> {{ hackrf_status.device_info.firmware }}</div>
+                        {% if hackrf_status.device_info.serial %}
+                        <div><strong>Serial:</strong> {{ hackrf_status.device_info.serial }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="mt-2">
+                    <small class="text-muted">Last detection: {{ hackrf_status.timestamp }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Status -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-server me-2"></i>System Status
+                </h5>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="mb-3">
+                            <i class="fas fa-microchip fa-2x text-info mb-2"></i>
+                            <div class="h5 mb-0">{{ system_stats.cpu.percent }}%</div>
+                            <small class="text-muted">CPU Usage</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mb-3">
+                            <i class="fas fa-memory fa-2x text-primary mb-2"></i>
+                            <div class="h5 mb-0">{{ system_stats.memory.percent }}%</div>
+                            <small class="text-muted">Memory</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="small text-muted">
+                    <div><i class="fas fa-clock me-1"></i> Uptime: {{ system_stats.system.uptime }}</div>
+                    <div><i class="fas fa-users me-1"></i> Users: {{ system_stats.system.users }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- BTS Statistics -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-broadcast-tower me-2"></i>BTS Statistics
+                </h5>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="mb-3">
+                            <i class="fas fa-users fa-2x text-success mb-2"></i>
+                            <div class="h5 mb-0">{{ subscribers_count }}</div>
+                            <small class="text-muted">Subscribers</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mb-3">
+                            <i class="fas fa-sms fa-2x text-warning mb-2"></i>
+                            <div class="h5 mb-0">{{ recent_sms }}</div>
+                            <small class="text-muted">Total SMS</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="small text-muted">
+                    <div><i class="fas fa-play-circle me-1"></i> Processes: {{ bts_status.total_processes }} running</div>
+                    <div><i class="fas fa-check-circle me-1 text-success"></i> Status: {{ bts_status.status|title }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Services Status -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">SIBERINDO Services Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for service_key, service in services.items() %}
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex justify-content-between align-items-center p-2 border rounded service-status">
+                            <div>
+                                <strong>{{ service.name }}</strong>
+                                <div class="text-muted small">{{ service.description }}</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-{{ 'success' if service.status == 'running' else 'danger' }}">
+                                    {{ service.status.title() }}
+                                </span>
+                                <div class="text-muted small">Port: {{ service.port }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Updates -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Real-time Monitoring</h5>
+                <small class="text-muted" id="lastUpdate">Last update: Loading...</small>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-2">
+                        <div class="border rounded p-3 stat-card">
+                            <i class="fas fa-network-wired fa-2x text-primary mb-2"></i>
+                            <div class="h4 mb-0" id="servicesCount">{{ services_running }}/6</div>
+                            <small class="text-muted">Services Running</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3 stat-card">
+                            <i class="fas fa-satellite-dish fa-2x text-info mb-2"></i>
+                            <div class="h4 mb-0" id="hackrfStatus">{{ 'Connected' if hackrf_status.connected else 'Disconnected' }}</div>
+                            <small class="text-muted">HackRF</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3 stat-card">
+                            <i class="fas fa-users fa-2x text-success mb-2"></i>
+                            <div class="h4 mb-0" id="subscribersCount">{{ subscribers_count }}</div>
+                            <small class="text-muted">Subscribers</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3 stat-card">
+                            <i class="fas fa-microchip fa-2x text-warning mb-2"></i>
+                            <div class="h4 mb-0" id="cpuUsage">{{ system_stats.cpu.percent }}%</div>
+                            <small class="text-muted">CPU</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3 stat-card">
+                            <i class="fas fa-memory fa-2x text-danger mb-2"></i>
+                            <div class="h4 mb-0" id="memoryUsage">{{ system_stats.memory.percent }}%</div>
+                            <small class="text-muted">Memory</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="border rounded p-3 stat-card">
+                            <i class="fas fa-heartbeat fa-2x text-success mb-2"></i>
+                            <div class="h4 mb-0" id="healthScore">{{ health_score }}</div>
+                            <small class="text-muted">Health Score</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let autoRefreshInterval;
+
+function refreshDashboard() {
+    fetch('/api/dashboard/refresh')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error refreshing dashboard:', data.error);
+                return;
+            }
+            
+            // Update real-time counters
+            document.getElementById('servicesCount').textContent = data.services_running + '/6';
+            document.getElementById('hackrfStatus').textContent = data.hackrf_status.connected ? 'Connected' : 'Disconnected';
+            document.getElementById('subscribersCount').textContent = data.subscribers_count;
+            document.getElementById('cpuUsage').textContent = data.system_stats.cpu.percent + '%';
+            document.getElementById('memoryUsage').textContent = data.system_stats.memory.percent + '%';
+            document.getElementById('healthScore').textContent = data.health_score;
+            document.getElementById('lastUpdate').textContent = 'Last update: ' + data.timestamp;
+            
+            // Update HackRF status badge
+            const hackrfBadge = document.querySelector('.hackrf-status .badge');
+            if (hackrfBadge) {
+                hackrfBadge.className = 'badge bg-' + data.hackrf_status.badge_type;
+                hackrfBadge.textContent = data.hackrf_status.display_text;
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing dashboard:', error);
+        });
+}
+
+function detectHackRF() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Detecting...';
+    btn.disabled = true;
+    
+    fetch('/api/hackrf/detect')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                refreshDashboard();
+                showAlert('HackRF detection completed: ' + data.status.display_text, 'success');
+            } else {
+                showAlert('HackRF detection failed: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error detecting HackRF:', error);
+            showAlert('Error detecting HackRF', 'danger');
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.main-content').prepend(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// Start auto-refresh
+document.addEventListener('DOMContentLoaded', function() {
+    autoRefreshInterval = setInterval(refreshDashboard, 10000); // Refresh every 10 seconds
+    document.getElementById('lastUpdate').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+
+{% block title %}BTS Scanner - {{ company }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scan-progress {
+        height: 25px;
+    }
+    .signal-excellent { background-color: #28a745; color: white; }
+    .signal-good { background-color: #20c997; color: white; }
+    .signal-fair { background-color: #ffc107; color: black; }
+    .signal-poor { background-color: #fd7e14; color: white; }
+    .signal-weak { background-color: #dc3545; color: white; }
+    
+    .band-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .band-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .band-card.selected {
+        border: 2px solid #007bff;
+        background-color: #f8f9fa;
+    }
+    
+    .bts-table tbody tr {
+        cursor: pointer;
+    }
+    .bts-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .status-scanning { background-color: #007bff; animation: pulse 1.5s infinite; }
+    .status-idle { background-color: #6c757d; }
+    .status-complete { background-color: #28a745; }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>BTS Scanner - {{ company }}</h2>
+    <div>
+        <button class="btn btn-outline-info btn-sm" onclick="refreshScanner()">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<!-- HackRF Status -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">HackRF Status</h5>
+                <span class="badge bg-{{ hackrf_status.badge_type }}">
+                    {{ hackrf_status.display_text }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p class="mb-2">{{ hackrf_status.description }}</p>
+                        {% if hackrf_status.device_info %}
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>Board ID:</strong> {{ hackrf_status.device_info.board_id }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Firmware:</strong> {{ hackrf_status.device_info.firmware }}
+                            </div>
+                            {% if hackrf_status.device_info.serial %}
+                            <div class="col-md-4">
+                                <strong>Serial:</strong> {{ hackrf_status.device_info.serial }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted">Last checked: {{ hackrf_status.timestamp }}</small>
+                        <br>
+                        <button class="btn btn-sm btn-outline-primary mt-2" onclick="detectHackRF()">
+                            <i class="fas fa-satellite-dish me-1"></i>Re-detect
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scanner Controls -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Scanner Controls</h5>
+            </div>
+            <div class="card-body">
+                <!-- Frequency Bands -->
+                <div class="mb-4">
+                    <h6>Select Frequency Band:</h6>
+                    <div class="row" id="bandSelection">
+                        {% for band in available_bands %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card band-card text-center" data-band="{{ band.name }}">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ band.name }}</h6>
+                                    <p class="card-text text-muted small">{{ band.description }}</p>
+                                    <small class="text-info">{{ band.range }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Scanner Settings -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Sample Rate</label>
+                        <select class="form-select" id="sampleRate">
+                            <option value="2000000">2 MS/s (Default)</option>
+                            <option value="4000000">4 MS/s</option>
+                            <option value="8000000">8 MS/s</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Gain Level</label>
+                        <select class="form-select" id="gainLevel">
+                            <option value="20">20 dB (Low)</option>
+                            <option value="40" selected>40 dB (Medium)</option>
+                            <option value="60">60 dB (High)</option>
+                            <option value="80">80 dB (Maximum)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Actions</label>
+                        <div>
+                            <button class="btn btn-success w-100" id="startScanBtn" onclick="startScan()" 
+                                    {{ 'disabled' if not hackrf_status.connected }}>
+                                <i class="fas fa-play me-1"></i>Start Scan
+                            </button>
+                            <button class="btn btn-danger w-100 mt-2" id="stopScanBtn" onclick="stopScan()" style="display: none;">
+                                <i class="fas fa-stop me-1"></i>Stop Scan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Scan Progress -->
+                <div id="scanProgressSection" style="display: none;">
+                    <h6>Scan Progress</h6>
+                    <div class="progress scan-progress mb-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="scanProgressBar" style="width: 0%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small id="scanOperation">Initializing...</small>
+                        <small id="scanPercentage">0%</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scan Results -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Scan Results</h5>
+                <div>
+                    <span class="badge bg-info me-2" id="resultsCount">{{ scan_results|length }} BTS Found</span>
+                    <span class="badge bg-secondary" id="scanStatusBadge">
+                        <span class="status-indicator status-{{ 'scanning' if scan_status.is_scanning else 'idle' }}"></span>
+                        {{ 'Scanning' if scan_status.is_scanning else 'Idle' }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if scan_results %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover bts-table">
+                        <thead>
+                            <tr>
+                                <th>Signal</th>
+                                <th>Channel</th>
+                                <th>Frequency</th>
+                                <th>Band</th>
+                                <th>ARFCN</th>
+                                <th>Network</th>
+                                <th>LAC</th>
+                                <th>Cell ID</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTable">
+                            {% for result in scan_results %}
+                            <tr data-bs-toggle="tooltip" title="Click for details" onclick="showBTSDetails({{ result | tojson }})">
+                                <td>
+                                    <span class="badge 
+                                        {% if result.signal >= -65 %}signal-excellent
+                                        {% elif result.signal >= -75 %}signal-good
+                                        {% elif result.signal >= -85 %}signal-fair
+                                        {% elif result.signal >= -95 %}signal-poor
+                                        {% else %}signal-weak{% endif %}">
+                                        {{ result.signal }} dBm
+                                    </span>
+                                </td>
+                                <td><strong>{{ result.channel }}</strong></td>
+                                <td>{{ result.frequency }} MHz</td>
+                                <td><span class="badge bg-secondary">{{ result.band }}</span></td>
+                                <td>{{ result.arfcn }}</td>
+                                <td>{{ result.network }}</td>
+                                <td>{{ result.lac }}</td>
+                                <td>{{ result.cell_id }}</td>
+                                <td><small class="text-muted">{{ result.timestamp }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Results Actions -->
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary btn-sm" onclick="analyzeResults()">
+                        <i class="fas fa-chart-bar me-1"></i>Analyze Results
+                    </button>
+                    <button class="btn btn-outline-success btn-sm ms-2" onclick="exportResults()">
+                        <i class="fas fa-download me-1"></i>Export CSV
+                    </button>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Scan Results</h5>
+                    <p class="text-muted">Start a scan to discover nearby BTS towers.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BTS Details Modal -->
+<div class="modal fade" id="btsDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">BTS Tower Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="btsDetailsContent">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Modal -->
+<div class="modal fade" id="analysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Scan Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="analysisContent">
+                <!-- Analysis will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedBand = 'GSM900';
+let scanInterval;
+
+// Initialize band selection
+document.addEventListener('DOMContentLoaded', function() {
+    // Select first band by default
+    const firstBandCard = document.querySelector('.band-card');
+    if (firstBandCard) {
+        firstBandCard.classList.add('selected');
+        selectedBand = firstBandCard.dataset.band;
+    }
+    
+    // Add click handlers to band cards
+    document.querySelectorAll('.band-card').forEach(card => {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.band-card').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedBand = this.dataset.band;
+        });
+    });
+    
+    // Start monitoring scan status if scanning
+    if ({{ scan_status.is_scanning | tojson }}) {
+        startScanMonitoring();
+    }
+    
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function startScan() {
+    const sampleRate = document.getElementById('sampleRate').value;
+    const gain = document.getElementById('gainLevel').value;
+    
+    const startBtn = document.getElementById('startScanBtn');
+    startBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Starting...';
+    startBtn.disabled = true;
+    
+    fetch('/api/bts_scan/start', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            band: selectedBand,
+            sample_rate: parseInt(sampleRate),
+            gain: parseInt(gain)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            document.getElementById('startScanBtn').style.display = 'none';
+            document.getElementById('stopScanBtn').style.display = 'block';
+            document.getElementById('scanProgressSection').style.display = 'block';
+            startScanMonitoring();
+        } else {
+            showAlert(data.message, 'danger');
+            startBtn.innerHTML = '<i class="fas fa-play me-1"></i>Start Scan';
+            startBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error starting scan:', error);
+        showAlert('Error starting scan: ' + error, 'danger');
+        startBtn.innerHTML = '<i class="fas fa-play me-1"></i>Start Scan';
+        startBtn.disabled = false;
+    });
+}
+
+function stopScan() {
+    fetch('/api/bts_scan/stop')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'info');
+                stopScanMonitoring();
+            } else {
+                showAlert(data.message, 'warning');
+            }
+        })
+        .catch(error => {
+            console.error('Error stopping scan:', error);
+            showAlert('Error stopping scan: ' + error, 'danger');
+        });
+}
+
+function startScanMonitoring() {
+    scanInterval = setInterval(updateScanStatus, 2000);
+    updateScanStatus();
+}
+
+function stopScanMonitoring() {
+    if (scanInterval) {
+        clearInterval(scanInterval);
+    }
+    document.getElementById('startScanBtn').style.display = 'block';
+    document.getElementById('stopScanBtn').style.display = 'none';
+    document.getElementById('startScanBtn').innerHTML = '<i class="fas fa-play me-1"></i>Start Scan';
+    document.getElementById('startScanBtn').disabled = false;
+    updateScanStatus(); // Final update
+}
+
+function updateScanStatus() {
+    fetch('/api/bts_scan/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error updating scan status:', data.error);
+                return;
+            }
+            
+            const status = data.scan_status;
+            const results = data.scan_results;
+            
+            // Update progress
+            const progressBar = document.getElementById('scanProgressBar');
+            const progressText = document.getElementById('scanPercentage');
+            const operationText = document.getElementById('scanOperation');
+            
+            if (progressBar && progressText && operationText) {
+                progressBar.style.width = status.progress + '%';
+                progressText.textContent = status.progress + '%';
+                operationText.textContent = status.current_operation;
+            }
+            
+            // Update status badge
+            const statusBadge = document.getElementById('scanStatusBadge');
+            if (statusBadge) {
+                const indicator = statusBadge.querySelector('.status-indicator');
+                indicator.className = 'status-indicator ' + (status.is_scanning ? 'status-scanning' : 'status-complete');
+                statusBadge.querySelector('span:last-child').textContent = 
+                    status.is_scanning ? 'Scanning' : 'Complete';
+            }
+            
+            // Update results count
+            document.getElementById('resultsCount').textContent = results.length + ' BTS Found';
+            
+            // Update results table
+            updateResultsTable(results);
+            
+            // Stop monitoring if scan is complete
+            if (!status.is_scanning) {
+                stopScanMonitoring();
+                if (results.length > 0) {
+                    showAlert('Scan completed! Found ' + results.length + ' BTS towers.', 'success');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error updating scan status:', error);
+        });
+}
+
+function updateResultsTable(results) {
+    const tableBody = document.getElementById('resultsTable');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    results.forEach(result => {
+        const row = document.createElement('tr');
+        row.onclick = () => showBTSDetails(result);
+        row.style.cursor = 'pointer';
+        row.title = 'Click for details';
+        
+        // Determine signal quality class
+        let signalClass = 'signal-weak';
+        if (result.signal >= -65) signalClass = 'signal-excellent';
+        else if (result.signal >= -75) signalClass = 'signal-good';
+        else if (result.signal >= -85) signalClass = 'signal-fair';
+        else if (result.signal >= -95) signalClass = 'signal-poor';
+        
+        row.innerHTML = `
+            <td><span class="badge ${signalClass}">${result.signal} dBm</span></td>
+            <td><strong>${result.channel}</strong></td>
+            <td>${result.frequency} MHz</td>
+            <td><span class="badge bg-secondary">${result.band}</span></td>
+            <td>${result.arfcn}</td>
+            <td>${result.network}</td>
+            <td>${result.lac}</td>
+            <td>${result.cell_id}</td>
+            <td><small class="text-muted">${result.timestamp}</small></td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+}
+
+function showBTSDetails(bts) {
+    const modalContent = document.getElementById('btsDetailsContent');
+    
+    let signalQuality = 'Excellent';
+    let signalClass = 'text-success';
+    if (bts.signal < -65) signalQuality = 'Good', signalClass = 'text-info';
+    if (bts.signal < -75) signalQuality = 'Fair', signalClass = 'text-warning';
+    if (bts.signal < -85) signalQuality = 'Poor', signalClass = 'text-danger';
+    if (bts.signal < -95) signalQuality = 'Very Poor', signalClass = 'text-danger';
+    
+    modalContent.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Basic Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Network:</strong></td><td>${bts.network}</td></tr>
+                    <tr><td><strong>Band:</strong></td><td>${bts.band}</td></tr>
+                    <tr><td><strong>Channel:</strong></td><td>${bts.channel}</td></tr>
+                    <tr><td><strong>ARFCN:</strong></td><td>${bts.arfcn}</td></tr>
+                    <tr><td><strong>Frequency:</strong></td><td>${bts.frequency} MHz</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Signal Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Signal Strength:</strong></td><td><span class="${signalClass}">${bts.signal} dBm</span></td></tr>
+                    <tr><td><strong>Signal Quality:</strong></td><td><span class="${signalClass}">${signalQuality}</span></td></tr>
+                    <tr><td><strong>Power Level:</strong></td><td>${bts.power}</td></tr>
+                    <tr><td><strong>LAC:</strong></td><td>${bts.lac}</td></tr>
+                    <tr><td><strong>Cell ID:</strong></td><td>${bts.cell_id}</td></tr>
+                </table>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <h6>Network Parameters</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>MCC:</strong></td><td>${bts.mcc}</td></tr>
+                    <tr><td><strong>MNC:</strong></td><td>${bts.mnc}</td></tr>
+                    <tr><td><strong>Timestamp:</strong></td><td>${bts.timestamp}</td></tr>
+                    ${bts.simulated ? '<tr><td><strong>Data Source:</strong></td><td><span class="badge bg-warning">Simulated Data</span></td></tr>' : ''}
+                </table>
+            </div>
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('btsDetailsModal'));
+    modal.show();
+}
+
+function analyzeResults() {
+    fetch('/api/bts_scan/analyze', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAnalysis(data.analysis);
+        } else {
+            showAlert(data.message, 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('Error analyzing results:', error);
+        showAlert('Error analyzing results: ' + error, 'danger');
+    });
+}
+
+function showAnalysis(analysis) {
+    const analysisContent = document.getElementById('analysisContent');
+    
+    analysisContent.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Scan Summary</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Total Towers:</strong></td><td>${analysis.total_towers}</td></tr>
+                    <tr><td><strong>Bands Found:</strong></td><td>${analysis.bands_found.join(', ')}</td></tr>
+                    <tr><td><strong>Frequency Range:</strong></td><td>${analysis.frequency_range.min} - ${analysis.frequency_range.max} MHz</td></tr>
+                    <tr><td><strong>Network Operators:</strong></td><td>${analysis.network_operators.join(', ')}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Signal Statistics</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Strongest Signal:</strong></td><td>${analysis.strongest_signal.toFixed(1)} dBm</td></tr>
+                    <tr><td><strong>Weakest Signal:</strong></td><td>${analysis.weakest_signal.toFixed(1)} dBm</td></tr>
+                    <tr><td><strong>Average Signal:</strong></td><td>${analysis.average_signal.toFixed(1)} dBm</td></tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <h6>Signal Quality Distribution</h6>
+                <table class="table table-sm">
+                    <tr><td><span class="badge signal-excellent">Excellent (≥ -65 dBm)</span></td><td>${analysis.signal_quality.excellent} towers</td></tr>
+                    <tr><td><span class="badge signal-good">Good (-75 to -65 dBm)</span></td><td>${analysis.signal_quality.good} towers</td></tr>
+                    <tr><td><span class="badge signal-fair">Fair (-85 to -75 dBm)</span></td><td>${analysis.signal_quality.fair} towers</td></tr>
+                    <tr><td><span class="badge signal-poor">Poor (< -85 dBm)</span></td><td>${analysis.signal_quality.poor} towers</td></tr>
+                </table>
+            </div>
+        </div>
+        
+        ${analysis.recommendations.length > 0 ? `
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <h6>Recommendations</h6>
+                <div class="alert alert-info">
+                    <ul class="mb-0">
+                        ${analysis.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('analysisModal'));
+    modal.show();
+}
+
+function exportResults() {
+    window.open('/api/bts_scan/export', '_blank');
+}
+
+function detectHackRF() {
+    fetch('/api/hackrf/detect')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('HackRF detection completed: ' + data.status.display_text, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showAlert('HackRF detection failed: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error detecting HackRF:', error);
+            showAlert('Error detecting HackRF', 'danger');
+        });
+}
+
+function refreshScanner() {
+    window.location.reload();
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.main-content').prepend(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

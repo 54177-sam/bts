@@ -7,25 +7,50 @@ Main application file - ENHANCED VERSION
 import logging
 import sys
 import os
-from flask import Flask, session
+from flask import Flask, session, g, request
 
 # Add current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Ensure log and data directories exist early
+os.makedirs('logs', exist_ok=True)
+os.makedirs('data', exist_ok=True)
+
+# Load configuration
+from config import Config
+
+app = Flask(__name__)
+app.config.from_object(Config)
+app.secret_key = app.config.get('SECRET_KEY', 'siberindo-bts-secret-key-2024-enhanced')
+app.config.setdefault('JSON_SORT_KEYS', False)
+
 # Configure logging
+log_file = app.config.get('LOG_FILE', 'logs/bts_system.log')
+log_level = getattr(logging, app.config.get('LOG_LEVEL', 'INFO').upper(), logging.INFO)
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('bts_system.log'),
+        logging.FileHandler(log_file),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-app.secret_key = 'siberindo-bts-secret-key-2024-enhanced'
-app.config['SESSION_TYPE'] = 'filesystem'
+# Import middleware
+from modules.middleware import init_request_context, cleanup_request_context
+
+# Register before/after request hooks
+@app.before_request
+def before_request():
+    """Initialize request context"""
+    init_request_context()
+
+@app.after_request
+def after_request(response):
+    """Cleanup request context"""
+    cleanup_request_context()
+    return response
 
 # Import and register blueprints with comprehensive error handling
 def register_blueprints():
@@ -115,13 +140,13 @@ if __name__ == '__main__':
     print("=" * 50)
     print("SIBERINDO BTS GSM Management System")
     print("Version: 2.0.0 - Enhanced")
-    print("Access URL: http://localhost:5000")
-    print("Health check: http://localhost:5000/health")
+    print(f"Access URL: http://{app.config.get('HOST','0.0.0.0')}:{app.config.get('PORT',5000)}")
+    print(f"Health check: http://{app.config.get('HOST','0.0.0.0')}:{app.config.get('PORT',5000)}/health")
     print("Default login: admin / admin")
     print("=" * 50)
     
-    # Create necessary directories
-    os.makedirs('logs', exist_ok=True)
-    os.makedirs('data', exist_ok=True)
+    host = app.config.get('HOST', '0.0.0.0')
+    port = int(app.config.get('PORT', 5000))
+    debug = bool(app.config.get('DEBUG', False))
     
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    app.run(host=host, port=port, debug=debug, threaded=True)

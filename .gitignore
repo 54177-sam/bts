@@ -1,7 +1,5 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
 
 # C extensions
 *.so
@@ -20,8 +18,6 @@ env/
 
 # Flask/Python specific
 instance/
-*.sqlite3
-*.db
 .pytest_cache/
 
 # Environment variables

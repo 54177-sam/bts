@@ -15,225 +15,129 @@
             --primary-color: #2c3e50;
             --secondary-color: #3498db;
             --success-color: #27ae60;
-            --warning-color: #f39c12;
-            --danger-color: #e74c3c;
-        }
-        
-        .health-score {
-            font-size: 2.5rem;
-            font-weight: bold;
-        }
-        .health-excellent { color: var(--success-color); }
-        .health-good { color: #20c997; }
-        .health-fair { color: var(--warning-color); }
-        .health-poor { color: #fd7e14; }
-        .health-critical { color: var(--danger-color); }
-        
-        .progress {
-            height: 8px;
-        }
-        
-        .stat-card {
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        
-        .service-status {
-            font-size: 0.85rem;
-            border-left: 4px solid transparent;
-            transition: all 0.3s ease;
-        }
-        .service-status.running { border-left-color: var(--success-color); }
-        .service-status.stopped { border-left-color: var(--danger-color); }
-        .service-status:hover {
-            background-color: #f8f9fa;
-            transform: translateX(2px);
-        }
-        
-        .hackrf-status-card {
-            border-left: 4px solid;
-            transition: all 0.3s ease;
-        }
-        .hackrf-connected { border-left-color: var(--success-color); }
-        .hackrf-disconnected { border-left-color: var(--danger-color); }
-        .hackrf-warning { border-left-color: var(--warning-color); }
-        
-        .navbar-brand {
-            font-weight: bold;
-            color: var(--primary-color) !important;
-        }
-        
-        .card-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            font-weight: 600;
-        }
-        
-        .refresh-btn {
-            transition: transform 0.3s ease;
-        }
-        .refresh-btn:hover {
-            transform: rotate(180deg);
-        }
-        
-        /* Animation for real-time updates */
-        @keyframes highlight {
-            0% { background-color: rgba(40, 167, 69, 0.3); }
-            100% { background-color: transparent; }
-        }
-        
-        .value-updated {
-            animation: highlight 1s ease;
-        }
-    </style>
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-satellite-dish me-2"></i>SIBERINDO BTS
-            </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    <i class="fas fa-user me-1"></i>admin
-                </span>
-                <a class="btn btn-outline-light btn-sm" href="#">
-                    <i class="fas fa-sign-out-alt me-1"></i>Logout
-                </a>
-            </div>
-        </div>
-    </nav>
+            {% extends "base.html" %}
 
-    <!-- Main Content -->
-    <div class="container-fluid mt-4">
-        <!-- System Health Score -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card stat-card">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-3 text-center">
-                                {% set health_class = 'health-excellent' if health_score >= 80 else 'health-good' if health_score >= 60 else 'health-fair' if health_score >= 40 else 'health-poor' %}
-                                <div class="health-score {{ health_class }}" id="healthScore">{{ health_score }}</div>
-                                <div class="text-muted">System Health Score</div>
-                                <small class="text-muted" id="lastUpdate">Last update: {{ bts_status.last_check }}</small>
-                            </div>
-                            <div class="col-md-9">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <small class="text-muted">Services Running</small>
-                                        <div class="progress mb-2">
-                                            <div class="progress-bar bg-success" 
-                                                 style="width: {{ (services_running / 6) * 100 }}%"
-                                                 id="servicesProgress">
-                                            </div>
-                                        </div>
-                                        <div id="servicesCount">{{ services_running }}/6 Running</div>
+            {% block title %}Dashboard - SIBERINDO BTS{% endblock %}
+
+            {% block extra_css %}
+            <style>
+                :root {
+                    --primary-color: #2c3e50;
+                    --secondary-color: #3498db;
+                    --success-color: #27ae60;
+                    --warning-color: #f39c12;
+                    --danger-color: #e74c3c;
+                }
+                .health-score { font-size: 2.5rem; font-weight: bold; }
+                .health-excellent { color: var(--success-color); }
+                .health-good { color: #20c997; }
+                .health-fair { color: var(--warning-color); }
+                .health-poor { color: #fd7e14; }
+                .progress { height: 8px; }
+                .stat-card { transition: transform 0.2s, box-shadow 0.2s; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                .stat-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+                .service-status { font-size: 0.85rem; border-left: 4px solid transparent; transition: all 0.3s ease; }
+                .service-status.running { border-left-color: var(--success-color); }
+                .service-status.stopped { border-left-color: var(--danger-color); }
+                .hackrf-status-card { border-left: 4px solid; transition: all 0.3s ease; }
+                .hackrf-connected { border-left-color: var(--success-color); }
+                .hackrf-disconnected { border-left-color: var(--danger-color); }
+                .hackrf-warning { border-left-color: var(--warning-color); }
+                .card-header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; font-weight: 600; }
+            </style>
+            {% endblock %}
+
+            {% block content %}
+            <div class="container-fluid mt-4">
+                <!-- System Health Score -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3 text-center">
+                                        {% set health_class = 'health-excellent' if health_score >= 80 else 'health-good' if health_score >= 60 else 'health-fair' if health_score >= 40 else 'health-poor' %}
+                                        <div class="health-score {{ health_class }}" id="healthScore">{{ health_score }}</div>
+                                        <div class="text-muted">System Health Score</div>
+                                        <small class="text-muted" id="lastUpdate">Last update: {{ bts_status.last_check }}</small>
                                     </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted">HackRF Status</small>
-                                        <div class="progress mb-2">
-                                            <div class="progress-bar {{ 'bg-success' if hackrf_status.connected else 'bg-danger' }}" 
-                                                 style="width: {{ 100 if hackrf_status.connected else 0 }}%"
-                                                 id="hackrfProgress">
+                                    <div class="col-md-9">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Services Running</small>
+                                                <div class="progress mb-2">
+                                                    <div class="progress-bar bg-success" style="width: {{ (services_running / 6) * 100 }}%" id="servicesProgress"></div>
+                                                </div>
+                                                <div id="servicesCount">{{ services_running }}/6 Running</div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">HackRF Status</small>
+                                                <div class="progress mb-2">
+                                                    <div class="progress-bar {{ 'bg-success' if hackrf_status.connected else 'bg-danger' }}" style="width: {{ 100 if hackrf_status.connected else 0 }}%" id="hackrfProgress"></div>
+                                                </div>
+                                                <div id="hackrfText">{{ hackrf_status.display_text }}</div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">CPU Usage</small>
+                                                <div class="progress mb-2">
+                                                    <div class="progress-bar {{ 'bg-success' if system_stats.cpu.percent < 50 else 'bg-warning' if system_stats.cpu.percent < 80 else 'bg-danger' }}" style="width: {{ system_stats.cpu.percent }}%" id="cpuProgress"></div>
+                                                </div>
+                                                <div id="cpuText">{{ system_stats.cpu.percent }}% Used</div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Memory Usage</small>
+                                                <div class="progress mb-2">
+                                                    <div class="progress-bar {{ 'bg-success' if system_stats.memory.percent < 50 else 'bg-warning' if system_stats.memory.percent < 80 else 'bg-danger' }}" style="width: {{ system_stats.memory.percent }}%" id="memoryProgress"></div>
+                                                </div>
+                                                <div id="memoryText">{{ system_stats.memory.percent }}% Used</div>
                                             </div>
                                         </div>
-                                        <div id="hackrfText">{{ hackrf_status.display_text }}</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted">CPU Usage</small>
-                                        <div class="progress mb-2">
-                                            <div class="progress-bar {{ 'bg-success' if system_stats.cpu.percent < 50 else 'bg-warning' if system_stats.cpu.percent < 80 else 'bg-danger' }}" 
-                                                 style="width: {{ system_stats.cpu.percent }}%"
-                                                 id="cpuProgress">
-                                            </div>
-                                        </div>
-                                        <div id="cpuText">{{ system_stats.cpu.percent }}% Used</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted">Memory Usage</small>
-                                        <div class="progress mb-2">
-                                            <div class="progress-bar {{ 'bg-success' if system_stats.memory.percent < 50 else 'bg-warning' if system_stats.memory.percent < 80 else 'bg-danger' }}" 
-                                                 style="width: {{ system_stats.memory.percent }}%"
-                                                 id="memoryProgress">
-                                            </div>
-                                        </div>
-                                        <div id="memoryText">{{ system_stats.memory.percent }}% Used</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Quick Stats Row -->
-        <div class="row mb-4">
-            <!-- HackRF Status -->
-            <div class="col-md-4">
-                <div class="card hackrf-status-card {{ 'hackrf-connected' if hackrf_status.connected else 'hackrf-disconnected' if hackrf_status.badge_type == 'danger' else 'hackrf-warning' }} stat-card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-satellite-dish me-2"></i>HackRF Status
-                            </h5>
-                            <span class="badge bg-{{ hackrf_status.badge_type }}" id="hackrfBadge">
-                                {{ hackrf_status.display_text }}
-                            </span>
-                        </div>
-                        <p class="text-muted small mb-3">{{ hackrf_status.description }}</p>
-                        
-                        {% if hackrf_status.connected and hackrf_status.device_info %}
-                        <div class="mt-3">
-                            <small class="text-muted">Device Information:</small>
-                            <div class="small mt-1">
-                                <div><strong>Board ID:</strong> <span id="hackrfBoard">{{ hackrf_status.device_info.board_id }}</span></div>
-                                <div><strong>Firmware:</strong> <span id="hackrfFirmware">{{ hackrf_status.device_info.firmware }}</span></div>
-                                {% if hackrf_status.device_info.serial %}
-                                <div><strong>Serial:</strong> <span id="hackrfSerial">{{ hackrf_status.device_info.serial }}</span></div>
+                <!-- Quick Stats Row -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card hackrf-status-card {{ 'hackrf-connected' if hackrf_status.connected else 'hackrf-disconnected' if hackrf_status.badge_type == 'danger' else 'hackrf-warning' }} stat-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="card-title mb-0"><i class="fas fa-satellite-dish me-2"></i>HackRF Status</h5>
+                                    <span class="badge bg-{{ hackrf_status.badge_type }}" id="hackrfBadge">{{ hackrf_status.display_text }}</span>
+                                </div>
+                                <p class="text-muted small mb-3">{{ hackrf_status.description }}</p>
+                                {% if hackrf_status.connected and hackrf_status.device_info %}
+                                <div class="mt-3">
+                                    <small class="text-muted">Device Information:</small>
+                                    <div class="small mt-1">
+                                        <div><strong>Board ID:</strong> <span id="hackrfBoard">{{ hackrf_status.device_info.board_id }}</span></div>
+                                        <div><strong>Firmware:</strong> <span id="hackrfFirmware">{{ hackrf_status.device_info.firmware }}</span></div>
+                                        {% if hackrf_status.device_info.serial %}
+                                        <div><strong>Serial:</strong> <span id="hackrfSerial">{{ hackrf_status.device_info.serial }}</span></div>
+                                        {% endif %}
+                                    </div>
+                                </div>
                                 {% endif %}
                             </div>
                         </div>
-                        {% endif %}
-                        
-                        <div class="mt-3">
-                            <small class="text-muted">Last detection: <span id="hackrfTimestamp">{{ hackrf_status.timestamp }}</span></small>
-                        </div>
                     </div>
                 </div>
+
+                <!-- Additional dashboard sections (services, BTS list, recent SMS, etc.) -->
+                {% include 'dashboard_sections.html' ignore missing %}
+
             </div>
-            
-            <!-- System Status -->
-            <div class="col-md-4">
-                <div class="card stat-card">
-                    <div class="card-body">
-                        <h5 class="card-title mb-3">
-                            <i class="fas fa-server me-2"></i>System Status
-                        </h5>
-                        <div class="row text-center mb-3">
-                            <div class="col-6">
-                                <div class="mb-3">
-                                    <i class="fas fa-microchip fa-2x text-info mb-2"></i>
-                                    <div class="h5 mb-0" id="cpuPercent">{{ system_stats.cpu.percent }}%</div>
-                                    <small class="text-muted">CPU Usage</small>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="mb-3">
-                                    <i class="fas fa-memory fa-2x text-primary mb-2"></i>
-                                    <div class="h5 mb-0" id="memoryPercent">{{ system_stats.memory.percent }}%</div>
-                                    <small class="text-muted">Memory Usage</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="small text-muted">
+            {% endblock %}
+
+            {% block extra_js %}
+            <script>
+            // Minimal dashboard JS placeholder - full interactive scripts live in template-specific blocks
+            console.log('Dashboard loaded');
+            </script>
+            {% endblock %}
                             <div><i class="fas fa-clock me-1"></i> Uptime: <span id="systemUptime">{{ system_stats.system.uptime }}</span></div>
                             <div><i class="fas fa-users me-1"></i> Users: <span id="systemUsers">{{ system_stats.system.users }}</span></div>
                             <div><i class="fas fa-desktop me-1"></i> Platform: {{ system_stats.system.platform }}</div>

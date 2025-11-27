@@ -130,8 +130,8 @@ class EnhancedBTSMonitor:
     
     def __init__(self):
         self.bts_processes = [
-            'osmo-bts', 'osmo-trx', 'osmo-bsc', 'osmo-msc', 
-            'osmo-hlr', 'osmo-sgsn', 'osmo-ggsn', 'osmocon',
+            'siberindo-bts', 'siberindo-trx', 'siberindo-bsc', 'siberindo-msc', 
+            'siberindo-hlr', 'siberindo-sgsn', 'siberindo-ggsn', 'siberindo-con',
             'python', 'flask', 'hackrf'
         ]
     

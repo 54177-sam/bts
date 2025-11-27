@@ -287,7 +287,7 @@ Short Term:
 
 Medium Term:
   - Real HackRF device support integration
-  - Osmocom system integration
+  - Osmocom system integration → Siberindo service integration
   - Advanced analytics dashboard
   - User role management interface
 

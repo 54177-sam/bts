@@ -11,71 +11,71 @@ class ServiceManager:
     
     def __init__(self):
         self.services = {
-            'osmo_bts': {
-                'name': 'OsmoBTS',
+            'siberindo_bts': {
+                'name': 'SiberindoBTS',
                 'description': 'GSM Base Transceiver Station',
                 'port': 4238,
                 'enabled': True,
-                'process_name': 'osmo-bts-trx',
-                'start_command': ['osmo-bts-trx', '-c', '/etc/osmocom/osmo-bts-trx.cfg'],
-                'stop_command': ['pkill', '-f', 'osmo-bts-trx'],
-                'config_file': '/etc/osmocom/osmo-bts-trx.cfg',
-                'log_file': '/var/log/osmocom/osmo-bts-trx.log'
+                'process_name': 'siberindo-bts-trx',
+                'start_command': ['siberindo-bts-trx', '-c', '/etc/siberindo/siberindo-bts-trx.cfg'],
+                'stop_command': ['pkill', '-f', 'siberindo-bts-trx'],
+                'config_file': '/etc/siberindo/siberindo-bts-trx.cfg',
+                'log_file': '/var/log/siberindo/siberindo-bts-trx.log'
             },
-            'osmo_bsc': {
-                'name': 'OsmoBSC',
+            'siberindo_bsc': {
+                'name': 'SiberindoBSC',
                 'description': 'GSM Base Station Controller', 
                 'port': 4240,
                 'enabled': True,
-                'process_name': 'osmo-bsc',
-                'start_command': ['osmo-bsc', '-c', '/etc/osmocom/osmo-bsc.cfg'],
-                'stop_command': ['pkill', '-f', 'osmo-bsc'],
-                'config_file': '/etc/osmocom/osmo-bsc.cfg',
-                'log_file': '/var/log/osmocom/osmo-bsc.log'
+                'process_name': 'siberindo-bsc',
+                'start_command': ['siberindo-bsc', '-c', '/etc/siberindo/siberindo-bsc.cfg'],
+                'stop_command': ['pkill', '-f', 'siberindo-bsc'],
+                'config_file': '/etc/siberindo/siberindo-bsc.cfg',
+                'log_file': '/var/log/siberindo/siberindo-bsc.log'
             },
-            'osmo_msc': {
-                'name': 'OsmoMSC',
+            'siberindo_msc': {
+                'name': 'SiberindoMSC',
                 'description': 'GSM Mobile Switching Center',
                 'port': 4242,
                 'enabled': True,
-                'process_name': 'osmo-msc',
-                'start_command': ['osmo-msc', '-c', '/etc/osmocom/osmo-msc.cfg'],
-                'stop_command': ['pkill', '-f', 'osmo-msc'],
-                'config_file': '/etc/osmocom/osmo-msc.cfg',
-                'log_file': '/var/log/osmocom/osmo-msc.log'
+                'process_name': 'siberindo-msc',
+                'start_command': ['siberindo-msc', '-c', '/etc/siberindo/siberindo-msc.cfg'],
+                'stop_command': ['pkill', '-f', 'siberindo-msc'],
+                'config_file': '/etc/siberindo/siberindo-msc.cfg',
+                'log_file': '/var/log/siberindo/siberindo-msc.log'
             },
-            'osmo_hlr': {
-                'name': 'OsmoHLR',
+            'siberindo_hlr': {
+                'name': 'SiberindoHLR',
                 'description': 'GSM Home Location Register',
                 'port': 4243,
                 'enabled': False,
-                'process_name': 'osmo-hlr',
-                'start_command': ['osmo-hlr', '-c', '/etc/osmocom/osmo-hlr.cfg'],
-                'stop_command': ['pkill', '-f', 'osmo-hlr'],
-                'config_file': '/etc/osmocom/osmo-hlr.cfg',
-                'log_file': '/var/log/osmocom/osmo-hlr.log'
+                'process_name': 'siberindo-hlr',
+                'start_command': ['siberindo-hlr', '-c', '/etc/siberindo/siberindo-hlr.cfg'],
+                'stop_command': ['pkill', '-f', 'siberindo-hlr'],
+                'config_file': '/etc/siberindo/siberindo-hlr.cfg',
+                'log_file': '/var/log/siberindo/siberindo-hlr.log'
             },
-            'osmo_sgsn': {
-                'name': 'OsmoSGSN',
+            'siberindo_sgsn': {
+                'name': 'SiberindoSGSN',
                 'description': 'GSM Serving GPRS Support Node',
                 'port': 4244,
                 'enabled': False,
-                'process_name': 'osmo-sgsn',
-                'start_command': ['osmo-sgsn', '-c', '/etc/osmocom/osmo-sgsn.cfg'],
-                'stop_command': ['pkill', '-f', 'osmo-sgsn'],
-                'config_file': '/etc/osmocom/osmo-sgsn.cfg',
-                'log_file': '/var/log/osmocom/osmo-sgsn.log'
+                'process_name': 'siberindo-sgsn',
+                'start_command': ['siberindo-sgsn', '-c', '/etc/siberindo/siberindo-sgsn.cfg'],
+                'stop_command': ['pkill', '-f', 'siberindo-sgsn'],
+                'config_file': '/etc/siberindo/siberindo-sgsn.cfg',
+                'log_file': '/var/log/siberindo/siberindo-sgsn.log'
             },
-            'osmo_ggsn': {
-                'name': 'OsmoGGSN',
+            'siberindo_ggsn': {
+                'name': 'SiberindoGGSN',
                 'description': 'GSM Gateway GPRS Support Node',
                 'port': 4245,
                 'enabled': False,
-                'process_name': 'osmo-ggsn',
-                'start_command': ['osmo-ggsn', '-c', '/etc/osmocom/osmo-ggsn.cfg'],
-                'stop_command': ['pkill', '-f', 'osmo-ggsn'],
-                'config_file': '/etc/osmocom/osmo-ggsn.cfg',
-                'log_file': '/var/log/osmocom/osmo-ggsn.log'
+                'process_name': 'siberindo-ggsn',
+                'start_command': ['siberindo-ggsn', '-c', '/etc/siberindo/siberindo-ggsn.cfg'],
+                'stop_command': ['pkill', '-f', 'siberindo-ggsn'],
+                'config_file': '/etc/siberindo/siberindo-ggsn.cfg',
+                'log_file': '/var/log/siberindo/siberindo-ggsn.log'
             }
         }
         

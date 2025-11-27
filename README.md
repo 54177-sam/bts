@@ -11,7 +11,7 @@ SIBERINDO BTS GUI adalah aplikasi berbasis web untuk manajemen jaringan GSM, mon
 - **BTS Status Tracking**: Process monitoring dan detection status
 - **HackRF Device Detection**: Simulasi dan real detection support
 - **Health Score Calculation**: Overall system health assessment
-- **Service Status Overview**: 6 layanan utama (OsmoBTS, OsmoBSC, OsmoMSC, OsmoHLR, OsmoSGSN, OsmoGGSN)
+- **Service Status Overview**: 6 layanan utama (SiberindoBTS, SiberindoBSC, SiberindoMSC, SiberindoHLR, SiberindoSGSN, SiberindoGGSN)
 
 ### Subscriber Management
 - **Subscriber Database**: IMSI, MSISDN, Location, Status tracking

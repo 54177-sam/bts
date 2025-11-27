@@ -235,7 +235,7 @@ No breaking configuration changes. Optional:
 ### Planned Features
 
 - [ ] Real HackRF device support
-- [ ] Osmocom integration
+- [ ] Advanced Siberindo stack integration
 - [ ] Advanced analytics dashboard
 - [ ] Real-time signal monitoring
 - [ ] User role management UI

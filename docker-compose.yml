@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # SIBERINDO BTS GUI Application
+  siberindo-bts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: siberindo-bts-gui
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - SIBERINDO_ENV=production
+      - DATABASE_PATH=/app/data/siberindo_bts.db
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - siberindo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: siberindo-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - siberindo-bts
+    networks:
+      - siberindo-network
+    restart: unless-stopped
+    profiles:
+      - nginx
+
+networks:
+  siberindo-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+  logs:
+    driver: local

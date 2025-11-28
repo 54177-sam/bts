@@ -1,46 +1,19 @@
 from flask import Blueprint, render_template, request, jsonify
 from modules.helpers import login_required
 from modules.database import get_subscribers as db_get_subscribers, get_subscribers_count as db_get_subscribers_count
+from modules.cache import cache_with_timeout, CacheManager
 import logging
-from functools import wraps
-import time
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 subscribers_bp = Blueprint('subscribers', __name__)
-
-# Cache timeout configuration
-CACHE_TIMEOUT_SUBS = 30  # 30 seconds for subscriber list
-
-
-def cache_with_timeout(timeout):
-    """Decorator to cache function results with timeout."""
-    def decorator(f):
-        cache = {}
-        cache_time = {}
-        
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            key = (args, tuple(sorted(kwargs.items())))
-            now = time.time()
-            
-            if key in cache and (now - cache_time[key]) < timeout:
-                return cache[key]
-            
-            result = f(*args, **kwargs)
-            cache[key] = result
-            cache_time[key] = now
-            return result
-        
-        return decorated
-    return decorator
 
 
 class SubscriberManager:
     """Optimized subscriber operations with caching and pagination."""
     
     @staticmethod
-    @cache_with_timeout(CACHE_TIMEOUT_SUBS)
+    @cache_with_timeout(CacheManager.TIMEOUT_SUBSCRIBERS)
     def get_subscribers(limit=100, offset=0):
         """Get subscribers with pagination and caching."""
         try:
@@ -50,7 +23,7 @@ class SubscriberManager:
             return []
     
     @staticmethod
-    @cache_with_timeout(CACHE_TIMEOUT_SUBS)
+    @cache_with_timeout(CacheManager.TIMEOUT_SUBSCRIBERS)
     def get_subscribers_count():
         """Get total subscriber count with caching."""
         try:

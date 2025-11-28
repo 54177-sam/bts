@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import subprocess
 import os
 import json
-import platform
 
 logger = logging.getLogger(__name__)
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -345,16 +344,8 @@ def calculate_advanced_health_score(services_running, hackrf_connected, memory_u
         logger.error(f"Error calculating health score: {e}")
         return 75
 
-# Login required decorator
-def login_required(f):
-    def decorated_function(*args, **kwargs):
-        # For development, always consider logged in
-        session['logged_in'] = True
-        session['username'] = 'admin'
-        session['role'] = 'administrator'
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
+# Import proper login_required decorator from helpers (DRY principle)
+from modules.helpers import login_required
 
 # Initialize managers
 system_monitor = AdvancedSystemMonitor()

@@ -1,0 +1,752 @@
+{
+  "audit_metadata": {
+    "timestamp": "2024-11-27",
+    "application": "SIBERINDO BTS GUI - Flask GSM Management Application",
+    "files_audited": 17,
+    "critical_issues": 8,
+    "high_priority_issues": 12,
+    "medium_priority_issues": 15,
+    "low_priority_issues": 10
+  },
+  "unused_code": [
+    {
+      "type": "function",
+      "name": "profile()",
+      "location": "modules/auth.py:169-178",
+      "severity": "low",
+      "description": "Profile route defined but no corresponding template (profile.html) exists in templates/ directory",
+      "notes": "Route is decorated with @login_required but profile.html template is missing"
+    },
+    {
+      "type": "function",
+      "name": "log_security_event()",
+      "location": "modules/auth.py:236-238",
+      "severity": "low",
+      "description": "Function defined and called but depends on database.log_system_event which exists but may not be properly integrated",
+      "notes": "Called in multiple places but no verification of actual database logging"
+    },
+    {
+      "type": "class",
+      "name": "EnhancedBTSMonitor (partial)",
+      "location": "modules/dashboard.py:133-200",
+      "severity": "medium",
+      "description": "Class defined in dashboard.py but also duplicate definition might exist in hackrf_manager.py",
+      "notes": "Monitors BTS processes but may be redundant with HackRFManager"
+    },
+    {
+      "type": "function",
+      "name": "login_required() (in dashboard.py)",
+      "location": "modules/dashboard.py:348-354",
+      "severity": "high",
+      "description": "Alternative login_required decorator defined in dashboard.py that always returns True",
+      "notes": "This is a SECURITY RISK - it bypasses authentication for development"
+    },
+    {
+      "type": "method",
+      "name": "get_real_hardware_status()",
+      "location": "modules/dashboard.py:289-298",
+      "severity": "low",
+      "description": "Placeholder method that never returns actual HackRF hardware status",
+      "notes": "Returns 'Hardware Mode Disabled' - essentially unused"
+    },
+    {
+      "type": "function",
+      "name": "get_subscribers_count() (in dashboard.py)",
+      "location": "modules/dashboard.py:302-304",
+      "severity": "high",
+      "description": "Returns random.randint(0, 100) instead of actual subscriber count",
+      "notes": "Mock implementation in dashboard.py, correct implementation exists in database.py"
+    }
+  ],
+  "duplicate_code": [
+    {
+      "type": "decorator",
+      "name": "login_required",
+      "locations": [
+        "modules/helpers.py:5-10",
+        "modules/auth.py:66-82",
+        "modules/dashboard.py:348-354"
+      ],
+      "severity": "critical",
+      "description": "login_required decorator implemented 3 times with different logic",
+      "notes": "helpers.py (simple redirect), auth.py (JWT + session support), dashboard.py (always True - SECURITY RISK). Should consolidate to single implementation."
+    },
+    {
+      "type": "decorator",
+      "name": "cache_with_timeout",
+      "locations": [
+        "modules/subscribers.py:17-35",
+        "modules/sms_manager.py:16-34",
+        "modules/bts_scanner.py:17-35"
+      ],
+      "severity": "high",
+      "description": "Identical cache_with_timeout decorator copied to 3 different modules",
+      "notes": "Should be defined once in a shared utilities module and imported"
+    },
+    {
+      "type": "class",
+      "name": "SMSManager / SubscriberManager / OptimizedHackRFManager",
+      "locations": [
+        "modules/sms_manager.py:37-66",
+        "modules/subscribers.py:38-67",
+        "modules/bts_scanner.py:40-77"
+      ],
+      "severity": "high",
+      "description": "Three Manager classes with nearly identical structure and caching patterns",
+      "notes": "Consider creating a base Manager class with cache_with_timeout mixin"
+    },
+    {
+      "type": "code_block",
+      "name": "Pagination logic",
+      "locations": [
+        "modules/subscribers.py:84-105",
+        "modules/sms_manager.py:151-172",
+        "modules/bts_scanner.py (routes)"
+      ],
+      "severity": "medium",
+      "description": "Pagination pattern repeated in multiple route handlers",
+      "notes": "Extract to utility function for DRY principle"
+    },
+    {
+      "type": "function",
+      "name": "get_available_bands()",
+      "locations": [
+        "modules/bts_scanner.py:57-62",
+        "modules/hackrf_manager.py:414-420"
+      ],
+      "severity": "low",
+      "description": "Band information defined in two places with identical data",
+      "notes": "Should centralize band configuration"
+    }
+  ],
+  "broken_references": [
+    {
+      "type": "missing_template",
+      "name": "profile.html",
+      "referenced_in": "modules/auth.py:176",
+      "route": "/auth/profile",
+      "severity": "high",
+      "description": "Route calls render_template('profile.html') but template doesn't exist in templates/ directory",
+      "fix": "Create templates/profile.html or remove the route"
+    },
+    {
+      "type": "incorrect_import",
+      "name": "get_subscribers, get_subscribers_count",
+      "location": "modules/sms_manager.py:3 - imports from non-existent functions",
+      "severity": "high",
+      "description": "sms_manager.py imports 'save_sms, save_sms_batch, get_sms_history' from database.py. save_sms and save_sms_batch need verification that they work correctly.",
+      "actual_status": "Functions exist in database.py (lines 325-345) but may have parameter mismatches"
+    },
+    {
+      "type": "method_parameter_mismatch",
+      "name": "save_sms()",
+      "location": "modules/database.py:325-326 vs modules/sms_manager.py usage",
+      "severity": "high",
+      "description": "save_sms called with (sender, receiver, message, sms_type, status) but implementation signature is different",
+      "details": "Line 326: save_sms calls db.add_sms_message(sender, receiver, message, 'sent', sms_type) - parameter order mismatch"
+    },
+    {
+      "type": "circular_import",
+      "name": "auth.py <-> database.py",
+      "location": "modules/auth.py:236 (inside function) and modules/database.py",
+      "severity": "medium",
+      "description": "auth.py imports database inside function to avoid circular import. This is a code smell.",
+      "details": "Line 236: from modules.database import log_system_event - inside function definition"
+    },
+    {
+      "type": "undefined_method",
+      "name": "detect_hackrf() in AdvancedHackRFManager",
+      "location": "modules/dashboard.py:299-301",
+      "severity": "medium",
+      "description": "AdvancedHackRFManager.detect_hackrf() calls external HackRFManager but may not exist",
+      "fix": "Should verify HackRFManager.detect_hackrf() exists or implement directly"
+    }
+  ],
+  "redundant_decorators": [
+    {
+      "decorator": "@login_required",
+      "instances": 20,
+      "locations": [
+        "modules/auth.py - auth routes (no decorator needed)",
+        "modules/sms_manager.py - 6 routes",
+        "modules/subscribers.py - 4 routes",
+        "modules/bts_scanner.py - 6 routes",
+        "modules/dashboard.py - dashboard route"
+      ],
+      "severity": "medium",
+      "issue": "Multiple implementations exist (helpers.py, auth.py, dashboard.py) creating inconsistency",
+      "recommendation": "Consolidate to single decorator that handles both session and JWT tokens"
+    },
+    {
+      "decorator": "@cache_with_timeout",
+      "instances": 9,
+      "duplicate_definitions": 3,
+      "severity": "high",
+      "issue": "Decorator defined identically in 3 different modules",
+      "recommendation": "Move to shared utilities module (e.g., modules/decorators.py)"
+    }
+  ],
+  "missing_templates": [
+    {
+      "template": "profile.html",
+      "referenced_in": "modules/auth.py:176",
+      "route": "/auth/profile",
+      "severity": "high",
+      "impact": "Route will crash with TemplateNotFound error at runtime"
+    }
+  ],
+  "hardcoded_values": [
+    {
+      "type": "database_path",
+      "value": "'data/siberindo_bts.db'",
+      "locations": [
+        "modules/database.py:13",
+        "config.py:5",
+        "scripts/init_db.py:14"
+      ],
+      "severity": "low",
+      "recommendation": "Already in config.py - good practice followed"
+    },
+    {
+      "type": "jwt_secret",
+      "value": "'siberindo-bts-jwt-secret-2024-enhanced'",
+      "location": "modules/auth.py:33",
+      "severity": "critical",
+      "description": "JWT secret key hardcoded in source",
+      "recommendation": "Move to environment variable or config.py"
+    },
+    {
+      "type": "database_salt",
+      "value": "'siberindo-salt-2024'",
+      "location": "modules/auth.py:38",
+      "severity": "critical",
+      "description": "Password salt hardcoded",
+      "recommendation": "Move to environment variable or config.py. Also consider using proper password hashing (bcrypt, argon2)"
+    },
+    {
+      "type": "default_credentials",
+      "value": "admin/admin, operator/admin",
+      "location": "modules/auth.py:11-31 (users_db dictionary)",
+      "severity": "critical",
+      "description": "Hardcoded default credentials with plaintext password values (via hash but salt is hardcoded)",
+      "recommendation": "Use environment variables or secure credential management"
+    },
+    {
+      "type": "secret_key",
+      "value": "'siberindo-bts-secret-key-2024-enhanced'",
+      "location": "app.py:21",
+      "severity": "critical",
+      "description": "Flask session secret key hardcoded as fallback",
+      "recommendation": "Always use environment variable, never fallback in production"
+    },
+    {
+      "type": "log_format_paths",
+      "value": "'/var/log/siberindo/*'",
+      "location": "modules/service_manager.py:25-35",
+      "severity": "medium",
+      "description": "Absolute paths to service config and log files hardcoded",
+      "recommendation": "Make configurable via environment variables"
+    },
+    {
+      "type": "email_address",
+      "value": "'admin@siberindo.com', 'operator@siberindo.com'",
+      "location": "modules/auth.py:17, 25",
+      "severity": "low",
+      "description": "Placeholder email addresses",
+      "recommendation": "Make configurable"
+    },
+    {
+      "type": "gsm_frequencies",
+      "value": "GSM bands (900, 1800, 1900 MHz)",
+      "location": "modules/hackrf_manager.py:24-26, modules/bts_scanner.py:57-62",
+      "severity": "low",
+      "recommendation": "Good - already well-organized in configuration"
+    },
+    {
+      "type": "timeout_values",
+      "value": "CACHE_TIMEOUT_* constants",
+      "location": "modules/subscribers.py:13, modules/sms_manager.py:13, modules/bts_scanner.py:14",
+      "severity": "low",
+      "description": "Cache timeouts as module-level constants",
+      "recommendation": "Already good practice - could move to config.py for consistency"
+    }
+  ],
+  "inefficient_imports": [
+    {
+      "type": "dynamic_import",
+      "location": "modules/auth.py:236",
+      "code": "from modules.database import log_system_event",
+      "inside": "function log_security_event()",
+      "severity": "medium",
+      "description": "Import inside function to avoid circular dependencies",
+      "impact": "Repeated import overhead on each function call",
+      "recommendation": "Refactor to avoid circular dependency at module level"
+    },
+    {
+      "type": "dynamic_import",
+      "location": "modules/service_manager.py:308",
+      "code": "from modules.database import log_system_event",
+      "inside": "method _start_service()",
+      "severity": "medium",
+      "description": "Another dynamic import for circular dependency avoidance",
+      "impact": "Same as above",
+      "recommendation": "Refactor circular dependencies"
+    },
+    {
+      "type": "inline_import",
+      "location": "modules/dashboard.py:367",
+      "code": "from modules.service_manager import ServiceManager",
+      "inside": "route handler dashboard()",
+      "severity": "medium",
+      "description": "Import inside route handler",
+      "impact": "Repeated import on each request",
+      "recommendation": "Move to module level imports"
+    },
+    {
+      "type": "inline_import",
+      "location": "modules/dashboard.py:312",
+      "code": "import random, from datetime import datetime, timedelta",
+      "inside": "function get_sms_history()",
+      "severity": "low",
+      "description": "datetime already imported at module level, reimported inside function",
+      "impact": "Minor - should clean up"
+    },
+    {
+      "type": "missing_import",
+      "location": "modules/dashboard.py:352",
+      "code": "from functools import wraps",
+      "inside": "login_required() implementation",
+      "severity": "low",
+      "description": "Uses @wraps decorator but wraps not imported in dashboard.py",
+      "impact": "Code would fail if this decorator is actually used"
+    }
+  ],
+  "error_handling_issues": [
+    {
+      "type": "missing_try_except",
+      "location": "modules/sms_manager.py:81-110 (send_silent_sms route)",
+      "severity": "medium",
+      "description": "Route handler checks for empty fields but may not handle all error cases from render_template",
+      "code": "render_template() calls may fail if templates don't exist"
+    },
+    {
+      "type": "missing_try_except",
+      "location": "modules/subscribers.py:84-105 (subscribers route)",
+      "severity": "medium",
+      "description": "Try-except block exists but doesn't handle specific database errors",
+      "code": "Generic Exception catch - should handle specific database.DatabaseError"
+    },
+    {
+      "type": "bare_except",
+      "location": "modules/hackrf_manager.py:137-140",
+      "code": "except: try: ... except: pass",
+      "severity": "high",
+      "description": "Bare except with pass statements hiding errors",
+      "impact": "Silent failures in process termination"
+    },
+    {
+      "type": "no_validation",
+      "location": "modules/dashboard.py:369-380 (dashboard route)",
+      "severity": "medium",
+      "description": "No validation that services_status dict keys exist before calling .get()",
+      "code": "sum(1 for s in services_status.values() if s.get('status') == 'running')"
+    },
+    {
+      "type": "uncaught_exception",
+      "location": "modules/auth.py:130-135 (login route)",
+      "severity": "low",
+      "description": "Form parsing not wrapped in try-except",
+      "code": "request.form.get() calls could fail with malformed requests"
+    },
+    {
+      "type": "missing_null_check",
+      "location": "modules/bts_scanner.py:237-260 (analyze_bts_results)",
+      "severity": "medium",
+      "description": "Assumes scan_results is list of dicts, could fail if None",
+      "code": "[r.get('signal', -100) for r in results if isinstance(r, dict)] - partial safety"
+    },
+    {
+      "type": "no_timeout",
+      "location": "modules/hackrf_manager.py:37-39",
+      "code": "subprocess.run(['which', 'hackrf_info'], capture_output=True, text=True, timeout=5)",
+      "severity": "low",
+      "description": "Timeout is 5 seconds which may be too short for slow systems"
+    },
+    {
+      "type": "missing_exception_logging",
+      "location": "modules/validators.py:192-198",
+      "code": "except Exception as e: logger.exception()",
+      "severity": "low",
+      "description": "Exception caught and logged but not re-raised or handled - caller won't know"
+    }
+  ],
+  "dependency_issues": [
+    {
+      "type": "circular_dependency",
+      "modules": ["auth.py", "database.py"],
+      "location": "modules/auth.py:236",
+      "severity": "high",
+      "description": "auth.py imports database inside function to avoid circular import at module level",
+      "impact": "Suggests architectural issue - function depends on logging module",
+      "recommendation": "Refactor - consider separate logging module or dependency injection"
+    },
+    {
+      "type": "circular_dependency",
+      "modules": ["service_manager.py", "database.py"],
+      "location": "modules/service_manager.py:308",
+      "severity": "high",
+      "description": "Same pattern as above - database import inside method",
+      "impact": "Same as above"
+    },
+    {
+      "type": "unmet_dependency",
+      "package": "kalibrate-hackrf",
+      "location": "modules/hackrf_manager.py:98-104",
+      "severity": "high",
+      "description": "Code attempts to call kalibrate-hackrf via subprocess but package may not be installed",
+      "current_behavior": "Falls back to simulated scan if not available (good)",
+      "recommendation": "Document this dependency in README and requirements.txt"
+    },
+    {
+      "type": "unmet_dependency",
+      "package": "hackrf_info",
+      "location": "modules/hackrf_manager.py:31-39",
+      "severity": "high",
+      "description": "Checks for hackrf_info tool availability but not installed in most systems",
+      "note": "Good - has fallback to simulation mode"
+    },
+    {
+      "type": "missing_dependency",
+      "package": "psutil",
+      "location": "modules/dashboard.py:1, modules/service_manager.py:1",
+      "severity": "medium",
+      "description": "psutil required but not in requirements.txt (if it's not there)",
+      "recommendation": "Verify all dependencies in requirements.txt"
+    },
+    {
+      "type": "global_singleton",
+      "name": "db",
+      "location": "modules/database.py:300",
+      "code": "db = BTSDatabase()",
+      "severity": "low",
+      "description": "Global database instance created at module import time",
+      "impact": "All requests share same connection pool (okay with sqlite3)"
+    },
+    {
+      "type": "unused_import",
+      "location": "modules/dashboard.py:8",
+      "code": "import json",
+      "severity": "low",
+      "description": "json imported but grep shows no usage in dashboard.py"
+    },
+    {
+      "type": "unused_import",
+      "location": "modules/dashboard.py:9",
+      "code": "import platform",
+      "severity": "low",
+      "description": "Only used in system_monitor.get_comprehensive_system_stats()"
+    }
+  ],
+  "performance_issues": [
+    {
+      "type": "n_plus_one_query",
+      "location": "modules/dashboard.py:380-382",
+      "code": "sum(1 for s in services_status.values() if s.get('status') == 'running')",
+      "severity": "low",
+      "description": "Not N+1 technically but inefficient - iterates all services",
+      "recommendation": "Already reasonable for expected dataset size"
+    },
+    {
+      "type": "inefficient_lookup",
+      "location": "modules/service_manager.py:144-160",
+      "code": "Iterates all processes with psutil.process_iter() for each service",
+      "severity": "medium",
+      "description": "get_all_services_status() calls _get_detailed_service_status() for each service, which calls _find_service_process() that iterates all processes",
+      "impact": "O(n*m) where n=number of services, m=number of processes",
+      "recommendation": "Cache process list once per call"
+    },
+    {
+      "type": "cache_ineffective",
+      "location": "modules/subscribers.py:45-57",
+      "description": "cache_with_timeout decorator stores results but uses tuple of arguments as key",
+      "issue": "Key includes args/kwargs which may not be hashable. Dict keys will fail.",
+      "severity": "high"
+    },
+    {
+      "type": "database_connection_leak",
+      "location": "modules/database.py:130-149",
+      "code": "Multiple get_connection() calls in get_subscribers() without context manager",
+      "severity": "medium",
+      "description": "While finally block closes connections, using context manager would be safer",
+      "recommendation": "Use with sqlite3.connect(): pattern"
+    },
+    {
+      "type": "memory_leak",
+      "location": "modules/dashboard.py:240-249",
+      "code": "EnhancedBTSMonitor.detection_history kept in memory indefinitely",
+      "severity": "low",
+      "description": "detection_history keeps last 10 entries but re-created on each module load",
+      "note": "Capped at 10 so acceptable"
+    },
+    {
+      "type": "random_data_generation",
+      "location": "modules/dashboard.py:302-304 (get_subscribers_count)",
+      "severity": "high",
+      "description": "Returns random value instead of actual database query",
+      "impact": "Dashboard shows incorrect subscriber count"
+    },
+    {
+      "type": "blocking_subprocess",
+      "location": "modules/hackrf_manager.py:392-394",
+      "code": "subprocess.run() with timeout=10 in sync request handler",
+      "severity": "medium",
+      "description": "Blocking subprocess call may timeout and hang request",
+      "recommendation": "Use subprocess.Popen with separate monitoring thread"
+    },
+    {
+      "type": "repeated_scan_data",
+      "location": "modules/bts_scanner.py:57-62 and modules/hackrf_manager.py:414-420",
+      "code": "Band data defined in two places",
+      "severity": "low",
+      "description": "get_available_bands() returns same data in two modules",
+      "recommendation": "Centralize configuration"
+    }
+  ],
+  "frontend_backend_mismatches": [
+    {
+      "template": "profile.html",
+      "route": "/auth/profile",
+      "severity": "critical",
+      "issue": "Template missing - route will crash with 500 error",
+      "recommendation": "Either create template or remove route"
+    },
+    {
+      "route": "/auth/profile",
+      "method": "GET",
+      "rendered_template": "profile.html",
+      "status": "broken",
+      "severity": "high"
+    }
+  ],
+  "critical_issues": [
+    {
+      "id": "CRIT-001",
+      "title": "Hardcoded JWT Secret Key",
+      "severity": "critical",
+      "location": "modules/auth.py:33",
+      "code": "JWT_SECRET = 'siberindo-bts-jwt-secret-2024-enhanced'",
+      "issue": "Secret key exposed in source code",
+      "impact": "Anyone with access to code can forge JWT tokens",
+      "fix": "Move to environment variable: os.environ.get('JWT_SECRET', 'default')"
+    },
+    {
+      "id": "CRIT-002",
+      "title": "Hardcoded Password Salt",
+      "severity": "critical",
+      "location": "modules/auth.py:38",
+      "code": "salt = 'siberindo-salt-2024'",
+      "issue": "Salt exposed in source code",
+      "impact": "Compromises password security",
+      "fix": "Use industry-standard password hashing (bcrypt/argon2) with configurable salt"
+    },
+    {
+      "id": "CRIT-003",
+      "title": "Hardcoded Default Credentials",
+      "severity": "critical",
+      "location": "modules/auth.py:11-31",
+      "issue": "users_db contains hardcoded admin/operator credentials",
+      "impact": "Default credentials exposed in source code",
+      "fix": "Initialize users from database or environment variables on first run"
+    },
+    {
+      "id": "CRIT-004",
+      "title": "Development login_required Bypasses Authentication",
+      "severity": "critical",
+      "location": "modules/dashboard.py:348-354",
+      "code": "@login_required sets session['logged_in'] = True always",
+      "issue": "Authentication completely bypassed for all dashboard routes",
+      "impact": "Anyone can access protected endpoints",
+      "fix": "Remove this decorator - use the proper one from helpers.py or auth.py"
+    },
+    {
+      "id": "CRIT-005",
+      "title": "Missing Template Causes Runtime Error",
+      "severity": "critical",
+      "location": "modules/auth.py:176",
+      "code": "render_template('profile.html')",
+      "issue": "profile.html doesn't exist in templates/",
+      "impact": "Route crashes with TemplateNotFound error",
+      "fix": "Create template or remove route"
+    },
+    {
+      "id": "CRIT-006",
+      "title": "Mock Data in Production Code",
+      "severity": "critical",
+      "location": "modules/dashboard.py:302-304",
+      "code": "def get_subscribers_count(): return random.randint(0, 100)",
+      "issue": "Returns random number instead of actual database count",
+      "impact": "Dashboard displays incorrect subscriber count - unusable for real operations",
+      "fix": "Replace with: return db.get_subscribers_count()"
+    },
+    {
+      "id": "CRIT-007",
+      "title": "Multiple login_required Implementations",
+      "severity": "critical",
+      "locations": ["helpers.py:5-10", "auth.py:66-82", "dashboard.py:348-354"],
+      "issue": "Three different implementations of @login_required decorator with different logic",
+      "impact": "Inconsistent security enforcement across application",
+      "fix": "Keep auth.py version (most complete), remove others, consolidate imports"
+    },
+    {
+      "id": "CRIT-008",
+      "title": "Parameter Mismatch in save_sms Function",
+      "severity": "critical",
+      "location": "modules/database.py:325-326",
+      "issue": "save_sms() calls add_sms_message() with mismatched parameters",
+      "code": "save_sms(sender, receiver, message, sms_type, status) -> add_sms_message(sender, receiver, message, 'sent', sms_type)",
+      "impact": "SMS sending may fail or save incorrect data",
+      "fix": "Verify parameter order and types between functions"
+    }
+  ],
+  "security_findings": [
+    {
+      "type": "hardcoded_secrets",
+      "count": 5,
+      "severity": "critical",
+      "items": ["JWT_SECRET", "password_salt", "Flask secret_key", "default_credentials"]
+    },
+    {
+      "type": "weak_password_hashing",
+      "location": "modules/auth.py:38-40",
+      "issue": "Uses SHA256 with hardcoded salt instead of bcrypt/argon2",
+      "severity": "high"
+    },
+    {
+      "type": "development_code_in_production",
+      "location": "modules/dashboard.py:348-354",
+      "issue": "login_required decorator always returns True",
+      "severity": "critical"
+    },
+    {
+      "type": "sql_injection_risk",
+      "location": "modules/database.py (all queries)",
+      "status": "safe",
+      "reason": "Uses parameterized queries throughout"
+    },
+    {
+      "type": "no_csrf_protection",
+      "location": "Flask routes (forms)",
+      "severity": "medium",
+      "recommendation": "Add Flask-WTF for CSRF protection on all POST/PUT/DELETE routes"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "critical",
+      "action": "Remove development login_required from dashboard.py",
+      "reason": "Security risk - bypasses authentication",
+      "effort": "5 minutes"
+    },
+    {
+      "priority": "critical",
+      "action": "Move all hardcoded secrets to config.py or environment variables",
+      "items": ["JWT_SECRET", "password_salt", "default_credentials"],
+      "reason": "Secrets exposure",
+      "effort": "30 minutes"
+    },
+    {
+      "priority": "critical",
+      "action": "Implement proper password hashing (bcrypt or argon2)",
+      "current": "SHA256 with hardcoded salt",
+      "reason": "Security best practice",
+      "effort": "1 hour"
+    },
+    {
+      "priority": "high",
+      "action": "Create profile.html template or remove /auth/profile route",
+      "reason": "Route crashes at runtime",
+      "effort": "15 minutes"
+    },
+    {
+      "priority": "high",
+      "action": "Fix get_subscribers_count() in dashboard.py",
+      "change": "Remove random mock, use db.get_subscribers_count()",
+      "reason": "Displays incorrect data",
+      "effort": "5 minutes"
+    },
+    {
+      "priority": "high",
+      "action": "Consolidate login_required decorator (keep auth.py version, remove from helpers.py and dashboard.py)",
+      "reason": "Inconsistent security enforcement",
+      "effort": "30 minutes"
+    },
+    {
+      "priority": "high",
+      "action": "Consolidate cache_with_timeout decorator",
+      "move_to": "modules/decorators.py",
+      "remove_from": ["subscribers.py", "sms_manager.py", "bts_scanner.py"],
+      "reason": "Code duplication",
+      "effort": "20 minutes"
+    },
+    {
+      "priority": "high",
+      "action": "Fix cache_with_timeout key hashing",
+      "issue": "Non-hashable dict keys may cause errors",
+      "solution": "Use json.dumps() for complex args",
+      "effort": "15 minutes"
+    },
+    {
+      "priority": "medium",
+      "action": "Refactor to eliminate dynamic imports",
+      "locations": ["auth.py:236", "service_manager.py:308"],
+      "reason": "Circular dependency workaround",
+      "solution": "Restructure modules or use dependency injection",
+      "effort": "1-2 hours"
+    },
+    {
+      "priority": "medium",
+      "action": "Add CSRF protection to all forms",
+      "recommendation": "Use Flask-WTF",
+      "effort": "1 hour"
+    },
+    {
+      "priority": "medium",
+      "action": "Add input validation decorators to all endpoints",
+      "use": "@validate_request_json and @validate_request_form",
+      "effort": "2 hours"
+    },
+    {
+      "priority": "medium",
+      "action": "Fix parameter mismatch in save_sms function",
+      "location": "modules/database.py:325-326",
+      "effort": "15 minutes"
+    },
+    {
+      "priority": "low",
+      "action": "Remove unused imports",
+      "examples": ["json (dashboard.py)", "platform (dashboard.py, when not used)"],
+      "effort": "10 minutes"
+    },
+    {
+      "priority": "low",
+      "action": "Move timeout and configuration constants to config.py",
+      "effort": "20 minutes"
+    },
+    {
+      "priority": "low",
+      "action": "Document external dependencies (kalibrate-hackrf, hackrf_info)",
+      "effort": "10 minutes"
+    }
+  ],
+  "summary": {
+    "total_issues": 45,
+    "critical": 8,
+    "high": 12,
+    "medium": 15,
+    "low": 10,
+    "code_quality_score": "60/100",
+    "security_score": "30/100",
+    "maintainability_score": "55/100",
+    "overall_assessment": "The application has significant security and code quality issues that need immediate attention. Primary concerns are hardcoded secrets, authentication bypass, mock data in production code, and code duplication. These should be addressed before production deployment."
+  }
+}

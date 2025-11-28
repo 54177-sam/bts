@@ -203,6 +203,15 @@ class BTSDatabase:
         finally:
             conn.close()
     
+    def get_sms_count(self):
+        """Get total SMS message count (efficient COUNT query)"""
+        conn = self.get_connection()
+        try:
+            count = conn.execute('SELECT COUNT(*) FROM sms_messages').fetchone()[0]
+            return count
+        finally:
+            conn.close()
+    
     # System logging
     def log_system_event(self, level, module, message):
         """Log system event to database"""

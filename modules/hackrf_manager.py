@@ -5,7 +5,6 @@ import json
 import threading
 import time
 from datetime import datetime
-import random
 
 logger = logging.getLogger(__name__)
 

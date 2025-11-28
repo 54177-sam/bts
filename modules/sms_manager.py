@@ -1,38 +1,11 @@
 from flask import Blueprint, render_template, request, jsonify
 from modules.helpers import login_required
 from modules.database import save_sms, save_sms_batch, get_sms_history as db_get_sms_history
+from modules.cache import cache_with_timeout, CacheManager
 import logging
-from functools import wraps
-import time
 
 logger = logging.getLogger(__name__)
 sms_bp = Blueprint('sms', __name__)
-
-# Cache timeout configuration
-CACHE_TIMEOUT_SMS = 15  # 15 seconds for SMS history
-
-
-def cache_with_timeout(timeout):
-    """Decorator to cache function results with timeout."""
-    def decorator(f):
-        cache = {}
-        cache_time = {}
-        
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            key = (args, tuple(sorted(kwargs.items())))
-            now = time.time()
-            
-            if key in cache and (now - cache_time[key]) < timeout:
-                return cache[key]
-            
-            result = f(*args, **kwargs)
-            cache[key] = result
-            cache_time[key] = now
-            return result
-        
-        return decorated
-    return decorator
 
 
 class SMSManager:
@@ -57,7 +30,7 @@ class SMSManager:
             return False
     
     @staticmethod
-    @cache_with_timeout(CACHE_TIMEOUT_SMS)
+    @cache_with_timeout(CacheManager.TIMEOUT_SMS_HISTORY)
     def get_sms_history(limit=50, offset=0):
         """Get cached SMS history with pagination."""
         try:
@@ -68,10 +41,11 @@ class SMSManager:
     
     @staticmethod
     def get_sms_count():
-        """Get total SMS count."""
+        """Get total SMS count (efficient database query)."""
         try:
-            history = SMSManager.get_sms_history(limit=10000)
-            return len(history) if history else 0
+            # Use database COUNT instead of loading all records (DRY + Performance)
+            from modules.database import get_sms_count as db_get_sms_count
+            return db_get_sms_count()
         except Exception:
             logger.exception("Error getting SMS count")
             return 0
